@@ -1,0 +1,91 @@
+Giving you all a same streamlit project " Predicting Software Dev Salary"
+
+
+pip install streamlit pandas scikit-learn
+
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import LabelEncoder
+import pickle
+
+# Load dataset
+df = pd.read_csv('salaries.csv')
+
+# Encode categorical data
+label_encoders = {}
+for column in df.select_dtypes(include=['object']).columns:
+    label_encoders[column] = LabelEncoder()
+    df[column] = label_encoders[column].fit_transform(df[column])
+
+# Split data into features and target
+X = df.drop('salary', axis=1)
+y = df['salary']
+
+# Split data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train model
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+# Save the model and label encoders
+with open('model.pkl', 'wb') as f:
+    pickle.dump(model, f)
+
+with open('label_encoders.pkl', 'wb') as f:
+    pickle.dump(label_encoders, f)
+
+
+
+
+
+
+
+4. Create the Streamlit App
+Create a new Python file named app.py and add the following code:
+
+python
+Copy code
+import streamlit as st
+import pandas as pd
+import numpy as np
+import pickle
+
+# Load the trained model and encoders
+with open('model.pkl', 'rb') as f:
+    model = pickle.load(f)
+
+with open('label_encoders.pkl', 'rb') as f:
+    label_encoders = pickle.load(f)
+
+# Function to make predictions
+def predict_salary(years_experience, education_level, job_title):
+    # Encode the inputs
+    education_level_encoded = label_encoders['education_level'].transform([education_level])[0]
+    job_title_encoded = label_encoders['job_title'].transform([job_title])[0]
+
+    # Create a DataFrame with the inputs
+    input_data = pd.DataFrame({
+        'years_experience': [years_experience],
+        'education_level': [education_level_encoded],
+        'job_title': [job_title_encoded]
+    })
+
+    # Make prediction
+    prediction = model.predict(input_data)
+    return prediction[0]
+
+# Streamlit app
+st.title('Software Developer Salary Predictor')
+
+st.write('Enter the following details to predict the salary:')
+
+years_experience = st.number_input('Years of Experience', min_value=0, max_value=50, value=1)
+education_level = st.selectbox('Education Level', label_encoders['education_level'].classes_)
+job_title = st.selectbox('Job Title', label_encoders['job_title'].classes_)
+
+if st.button('Predict Salary'):
+    salary = predict_salary(years_experience, education_level, job_title)
+    st.write(f'Predicted Salary: ${salary:,.2f}')
